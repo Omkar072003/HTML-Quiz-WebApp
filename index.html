@@ -20,7 +20,7 @@
   }
 </style>
 
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 
@@ -87,8 +87,12 @@ window.addEventListener('DOMContentLoaded', () => {
       profileName.textContent = user.displayName;
       profilePic.src = user.photoURL;
 
-      loginPage.classList.add('hidden');
-      sectionPage.classList.remove('hidden');
+      gsap.to(loginPage, { duration: 0.5, opacity: 0, onComplete: () => {
+    loginPage.classList.add('hidden');
+    sectionPage.classList.remove('hidden');
+    gsap.fromTo(sectionPage, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.5 });
+}});
+
 
       await setDoc(doc(db, "users", user.uid), {
         name: user.displayName,
@@ -119,8 +123,12 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 
   function startQuiz(level) {
+    gsap.to(sectionPage, { duration: 0.5, opacity: 0, onComplete: () => {
     sectionPage.classList.add('hidden');
     quizPage.classList.remove('hidden');
+    gsap.fromTo(quizPage, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.5 });
+}});
+
     quizContainer.innerHTML = "";
     const questions = quizzes[level];
     let current = 0;
@@ -133,9 +141,14 @@ window.addEventListener('DOMContentLoaded', () => {
           <p>Your Score: ${score} / ${questions.length} (${Math.round((score / questions.length) * 100)}%)</p>
           <button id="backButton" class="mt-4 bg-blue-600 p-2 rounded">Back to Levels</button>
         `;
+        gsap.from('#quizContainer', { opacity: 0, y: 30, duration: 0.5 });
         document.getElementById('backButton').addEventListener('click', () => {
-          quizPage.classList.add('hidden');
-          sectionPage.classList.remove('hidden');
+          gsap.to(quizPage, { duration: 0.5, opacity: 0, onComplete: () => {
+    quizPage.classList.add('hidden');
+    sectionPage.classList.remove('hidden');
+    gsap.fromTo(sectionPage, { opacity: 0, scale: 0.95 }, { opacity: 1, scale: 1, duration: 0.5 });
+}});
+
         });
         if (currentUser) {
           setDoc(doc(db, "quizResults", currentUser.uid + "_" + level), {
@@ -215,6 +228,13 @@ window.addEventListener('resize', () => {
 });
 
 });
+
+gsap.from('#loginPage button', { y: 50, opacity: 0, duration: 1, ease: "power2.out" });
+
+document.querySelectorAll('.quizButton').forEach((btn, idx) => {
+    gsap.from(btn, { y: 20, opacity: 0, delay: 0.3 + idx * 0.1, duration: 0.5 });
+});
+
 </script>
 </head>
 
