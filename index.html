@@ -28,6 +28,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+import { collection, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAb3DUoDYJ1kvq23SiDI8PkTCvIt_ooUfM",
@@ -69,6 +70,7 @@ const quizzes = {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
+    
   const loginPage = document.getElementById('loginPage');
   const sectionPage = document.getElementById('sectionPage');
   const quizPage = document.getElementById('quizPage');
@@ -76,6 +78,58 @@ window.addEventListener('DOMContentLoaded', () => {
   const profilePic = document.getElementById('profilePic');
   const signOutButton = document.getElementById('signOutButton');
   const quizContainer = document.getElementById('quizContainer');
+  const leaderboardPage = document.getElementById('leaderboardPage');
+const leaderboardContainer = document.getElementById('leaderboardContainer');
+const viewLeaderboardButton = document.getElementById('viewLeaderboardButton');
+const backToLevelsButton = document.getElementById('backToLevelsButton');
+
+
+
+viewLeaderboardButton.addEventListener('click', async () => {
+    gsap.to(sectionPage, { duration: 0.5, opacity: 0, onComplete: async () => {
+        sectionPage.classList.add('hidden');
+        leaderboardPage.classList.remove('hidden');
+        gsap.fromTo(leaderboardPage, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5 });
+
+        leaderboardContainer.innerHTML = "<p>Loading leaderboard...</p>";
+
+        const resultsQuery = query(collection(db, "quizResults"), orderBy("score", "desc"), orderBy("timestamp", "desc"), limit(10));
+        const querySnapshot = await getDocs(resultsQuery);
+
+        leaderboardContainer.innerHTML = "";
+        let idx = 0;
+        querySnapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            const div = document.createElement('div');
+            div.className = "bg-gray-800 p-2 rounded flex justify-between items-center";
+            div.innerHTML = `
+                <div>
+                    <p class="font-semibold">${data.name || "Anonymous"}</p>
+                    <p class="text-sm">${data.level} - ${new Date(data.timestamp.seconds * 1000).toLocaleDateString()}</p>
+                </div>
+                <div class="text-lg font-bold">${data.score}/${data.outOf}</div>
+            `;
+            leaderboardContainer.appendChild(div);
+
+            // GSAP staggered animation
+            gsap.from(div, { opacity: 0, y: 20, delay: 0.1 * idx, duration: 0.5 });
+            idx++;
+        });
+
+        if (idx === 0) {
+            leaderboardContainer.innerHTML = "<p>No results yet. Play a quiz to appear here!</p>";
+        }
+    }});
+});
+
+backToLevelsButton.addEventListener('click', () => {
+    gsap.to(leaderboardPage, { duration: 0.5, opacity: 0, onComplete: () => {
+        leaderboardPage.classList.add('hidden');
+        sectionPage.classList.remove('hidden');
+        gsap.fromTo(sectionPage, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.5 });
+    }});
+});
+
 
   let currentUser = null;
 
@@ -186,6 +240,7 @@ window.addEventListener('DOMContentLoaded', () => {
     showQuestion();
   }
 
+  
   // Three.js background
   // Three.js background (initialize AFTER DOM is fully ready)
 const canvas = document.getElementById('bgCanvas');
@@ -259,12 +314,21 @@ document.querySelectorAll('.quizButton').forEach((btn, idx) => {
   <button class="quizButton bg-yellow-600 p-2 rounded" data-level="Intermediate">Intermediate</button>
   <button class="quizButton bg-purple-600 p-2 rounded" data-level="Advanced">Advanced</button>
   <button id="signOutButton" class="bg-gray-700 hover:bg-gray-800 p-2 rounded">Sign Out</button>
+  <button id="viewLeaderboardButton" class="bg-indigo-600 hover:bg-indigo-700 p-2 rounded">View Leaderboard</button>
 </div>
 
 <!-- Quiz Page -->
 <div id="quizPage" class="hidden flex flex-col items-center space-y-4 z-10 max-w-md w-full">
   <div id="quizContainer" class="text-center w-full"></div>
 </div>
+
+<!-- Leaderboard Page -->
+<div id="leaderboardPage" class="hidden flex flex-col items-center space-y-4 z-10 max-w-md w-full p-4">
+    <h1 class="text-2xl font-bold">Leaderboard</h1>
+    <div id="leaderboardContainer" class="w-full space-y-2"></div>
+    <button id="backToLevelsButton" class="bg-blue-600 hover:bg-blue-700 p-2 rounded">Back to Levels</button>
+</div>
+
 
 </body>
 </html>
