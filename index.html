@@ -3,18 +3,32 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>HTML Quiz WebApp with Google Sign-In, Firestore, GSAP Animations</title>
+<title>HTML Quiz WebApp - Complete</title>
 
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+
+<style>
+  body, html { margin: 0; padding: 0; overflow: hidden; height: 100%; width: 100%; background: #0a0a0a; }
+  #bgCanvas { position: fixed; top: 0; left: 0; z-index: 0; width: 100%; height: 100%; display: block; }
+  .content { position: relative; z-index: 10; }
+  .overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.4);
+    z-index: 5;
+  }
+</style>
+
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
 import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
 
-// Your Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyAb3DUoDYJ1kvq23SiDI8PkTCvIt_ooUfM",
             authDomain: "html-quiz-webapp.firebaseapp.com",
@@ -25,40 +39,57 @@ const firebaseConfig = {
             measurementId: "G-43P68MYVE0"
 };
 
-// Init Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 const db = getFirestore(app);
 
+const quizzes = {
+  Basics: [
+    { question: "What does HTML stand for?", options: ["Hyper Trainer Marking Language", "Hyper Text Markup Language", "Hyper Text Marketing Language", "Hyper Text Markup Leveler"], answer: 1 },
+    { question: "Which tag is used for a paragraph?", options: ["<p>", "<h1>", "<div>", "<span>"], answer: 0 },
+    { question: "Which tag is used for images?", options: ["<img>", "<image>", "<src>", "<pic>"], answer: 0 },
+    { question: "Which is the correct doctype for HTML5?", options: ["<!DOCTYPE html>", "<!DOCTYPE HTML5>", "<html5>", "<doctype html>"], answer: 0 },
+    { question: "Which tag is used for hyperlinks?", options: ["<link>", "<a>", "<href>", "<hyper>"], answer: 1 }
+  ],
+  Intermediate: [
+    { question: "Which tag is used to create a table row?", options: ["<td>", "<th>", "<tr>", "<table>"], answer: 2 },
+    { question: "Which attribute specifies an image path?", options: ["href", "src", "link", "path"], answer: 1 },
+    { question: "Which tag creates an ordered list?", options: ["<ul>", "<ol>", "<list>", "<dl>"], answer: 1 },
+    { question: "What does the <br> tag do?", options: ["Creates a paragraph", "Creates a new line", "Creates a link", "Boldens text"], answer: 1 },
+    { question: "What tag is used for bold text in HTML5?", options: ["<strong>", "<b>", "<bold>", "<em>"], answer: 0 }
+  ],
+  Advanced: [
+    { question: "What does the <canvas> element do?", options: ["Defines an area for graphics", "Creates a table", "Creates forms", "Embeds audio"], answer: 0 },
+    { question: "Which API is used with <canvas> for drawing?", options: ["2D Context API", "Canvas API", "WebGL", "Graphic API"], answer: 0 },
+    { question: "Which tag is used to embed JavaScript in HTML?", options: ["<script>", "<js>", "<javascript>", "<code>"], answer: 0 },
+    { question: "How do you comment in HTML?", options: ["// comment", "/* comment */", "<!-- comment -->", "# comment"], answer: 2 },
+    { question: "Which tag defines a section in a document?", options: ["<section>", "<div>", "<span>", "<header>"], answer: 0 }
+  ]
+};
+
 window.addEventListener('DOMContentLoaded', () => {
   const loginPage = document.getElementById('loginPage');
   const sectionPage = document.getElementById('sectionPage');
+  const quizPage = document.getElementById('quizPage');
   const profileName = document.getElementById('profileName');
   const profilePic = document.getElementById('profilePic');
   const signOutButton = document.getElementById('signOutButton');
+  const quizContainer = document.getElementById('quizContainer');
+
+  let currentUser = null;
 
   document.getElementById('googleSignInButton').addEventListener('click', async () => {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+      currentUser = user;
       profileName.textContent = user.displayName;
       profilePic.src = user.photoURL;
 
       loginPage.classList.add('hidden');
       sectionPage.classList.remove('hidden');
 
-      // Animate sectionPage with GSAP and Anime.js
-      gsap.from(sectionPage, { opacity: 0, duration: 1, y: -50 });
-      anime({
-        targets: '#profilePic',
-        rotate: '1turn',
-        scale: [0, 1],
-        duration: 1200,
-        easing: 'easeInOutExpo'
-      });
-
-      // Store user data in Firestore
       await setDoc(doc(db, "users", user.uid), {
         name: user.displayName,
         email: user.email,
@@ -75,31 +106,144 @@ window.addEventListener('DOMContentLoaded', () => {
   signOutButton.addEventListener('click', async () => {
     await signOut(auth);
     sectionPage.classList.add('hidden');
+    quizPage.classList.add('hidden');
     loginPage.classList.remove('hidden');
     alert("You have been signed out.");
   });
+
+  document.querySelectorAll('.quizButton').forEach(button => {
+    button.addEventListener('click', () => {
+      const level = button.dataset.level;
+      startQuiz(level);
+    });
+  });
+
+  function startQuiz(level) {
+    sectionPage.classList.add('hidden');
+    quizPage.classList.remove('hidden');
+    quizContainer.innerHTML = "";
+    const questions = quizzes[level];
+    let current = 0;
+    let score = 0;
+
+    function showQuestion() {
+      if (current >= questions.length) {
+        quizContainer.innerHTML = `
+          <h2 class="text-xl font-bold">Quiz Complete!</h2>
+          <p>Your Score: ${score} / ${questions.length} (${Math.round((score / questions.length) * 100)}%)</p>
+          <button id="backButton" class="mt-4 bg-blue-600 p-2 rounded">Back to Levels</button>
+        `;
+        document.getElementById('backButton').addEventListener('click', () => {
+          quizPage.classList.add('hidden');
+          sectionPage.classList.remove('hidden');
+        });
+        if (currentUser) {
+          setDoc(doc(db, "quizResults", currentUser.uid + "_" + level), {
+            uid: currentUser.uid,
+            level: level,
+            score: score,
+            outOf: questions.length,
+            timestamp: new Date()
+          });
+        }
+        return;
+      }
+
+      const q = questions[current];
+      quizContainer.innerHTML = `
+        <h2 class="text-lg font-semibold mb-2">Question ${current + 1} of ${questions.length}</h2>
+        <p class="mb-4">${q.question}</p>
+        <div id="optionsContainer" class="space-y-2"></div>
+      `;
+
+      const optionsContainer = document.getElementById('optionsContainer');
+      q.options.forEach((option, idx) => {
+        const btn = document.createElement('button');
+        btn.textContent = option;
+        btn.className = "w-full bg-gray-700 hover:bg-gray-800 p-2 rounded";
+        btn.addEventListener('click', () => {
+          if (idx === q.answer) score++;
+          current++;
+          showQuestion();
+        });
+        optionsContainer.appendChild(btn);
+      });
+    }
+
+    showQuestion();
+  }
+
+  // Three.js background
+  // Three.js background (initialize AFTER DOM is fully ready)
+const canvas = document.getElementById('bgCanvas');
+const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x000000, 200, 1500);
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 2000);
+camera.position.z = 400;
+
+const particles = new THREE.BufferGeometry();
+const particleCount = 1000;
+const positions = new Float32Array(particleCount * 3);
+
+for (let i = 0; i < particleCount; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 1000;
+    positions[i * 3 + 1] = (Math.random() - 0.5) * 1000;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 1000;
+}
+particles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+const particleMaterial = new THREE.PointsMaterial({ color: 0x00ffff, size: 2 });
+const particleSystem = new THREE.Points(particles, particleMaterial);
+scene.add(particleSystem);
+
+function animate() {
+    requestAnimationFrame(animate);
+    particleSystem.rotation.x += 0.0005;
+    particleSystem.rotation.y += 0.001;
+    renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
 });
 </script>
 </head>
 
-<body class="bg-gradient-to-br from-blue-900 to-blue-500 text-white min-h-screen flex flex-col items-center justify-center p-6">
+<body class="text-white min-h-screen flex flex-col items-center justify-center p-6">
+
+<canvas id="bgCanvas"></canvas>
 
 <!-- Login Page -->
-<div id="loginPage" class="flex flex-col space-y-4 w-full max-w-xs">
+ <div class="overlay"></div>
+<div id="loginPage" class="flex flex-col space-y-4 w-full max-w-xs z-10">
   <h1 class="text-2xl font-bold text-center">Login to Continue</h1>
   <button id="googleSignInButton" class="bg-red-600 hover:bg-red-700 p-2 rounded">Sign in with Google</button>
 </div>
 
 <!-- Section Page -->
-<div id="sectionPage" class="hidden flex flex-col items-center space-y-4">
+<div id="sectionPage" class="hidden flex flex-col items-center space-y-4 z-10">
   <img id="profilePic" class="w-20 h-20 rounded-full border-4 border-white" alt="Profile Picture">
   <h2 id="profileName" class="text-xl font-semibold"></h2>
   <h1 class="text-2xl font-bold">Welcome to HTML Quiz</h1>
   <p>Select a quiz level to start.</p>
-  <button class="bg-green-600 p-2 rounded">Basics</button>
-  <button class="bg-yellow-600 p-2 rounded">Intermediate</button>
-  <button class="bg-purple-600 p-2 rounded">Advanced</button>
+  <button class="quizButton bg-green-600 p-2 rounded" data-level="Basics">Basics</button>
+  <button class="quizButton bg-yellow-600 p-2 rounded" data-level="Intermediate">Intermediate</button>
+  <button class="quizButton bg-purple-600 p-2 rounded" data-level="Advanced">Advanced</button>
   <button id="signOutButton" class="bg-gray-700 hover:bg-gray-800 p-2 rounded">Sign Out</button>
+</div>
+
+<!-- Quiz Page -->
+<div id="quizPage" class="hidden flex flex-col items-center space-y-4 z-10 max-w-md w-full">
+  <div id="quizContainer" class="text-center w-full"></div>
 </div>
 
 </body>
