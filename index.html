@@ -3,16 +3,12 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>HTML Quiz WebApp with Google Sign-In, Firestore, Three.js</title>
+<title>HTML Quiz WebApp with Google Sign-In, Firestore, GSAP Animations</title>
 
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
 
-<style>
-  body, html { margin: 0; padding: 0; overflow: hidden; }
-  #bgCanvas { position: fixed; top: 0; left: 0; z-index: -1; }
-</style>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
@@ -20,7 +16,7 @@ import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.
 
 // Your Firebase config
 const firebaseConfig = {
-    apiKey: "AIzaSyAb3DUoDYJ1kvq23SiDI8PkTCvIt_ooUfM",
+  apiKey: "AIzaSyAb3DUoDYJ1kvq23SiDI8PkTCvIt_ooUfM",
             authDomain: "html-quiz-webapp.firebaseapp.com",
             projectId: "html-quiz-webapp",
             storageBucket: "html-quiz-webapp.firebasestorage.app",
@@ -29,6 +25,7 @@ const firebaseConfig = {
             measurementId: "G-43P68MYVE0"
 };
 
+// Init Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
@@ -51,6 +48,17 @@ window.addEventListener('DOMContentLoaded', () => {
       loginPage.classList.add('hidden');
       sectionPage.classList.remove('hidden');
 
+      // Animate sectionPage with GSAP and Anime.js
+      gsap.from(sectionPage, { opacity: 0, duration: 1, y: -50 });
+      anime({
+        targets: '#profilePic',
+        rotate: '1turn',
+        scale: [0, 1],
+        duration: 1200,
+        easing: 'easeInOutExpo'
+      });
+
+      // Store user data in Firestore
       await setDoc(doc(db, "users", user.uid), {
         name: user.displayName,
         email: user.email,
@@ -70,58 +78,20 @@ window.addEventListener('DOMContentLoaded', () => {
     loginPage.classList.remove('hidden');
     alert("You have been signed out.");
   });
-
-  // THREE.JS Particle Background
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bgCanvas'), alpha: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-
-  const particles = new THREE.Geometry();
-  const particleMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 1 });
-
-  for (let i = 0; i < 5000; i++) {
-    const particle = new THREE.Vector3(
-      (Math.random() - 0.5) * 1000,
-      (Math.random() - 0.5) * 1000,
-      (Math.random() - 0.5) * 1000
-    );
-    particles.vertices.push(particle);
-  }
-
-  const particleSystem = new THREE.Points(particles, particleMaterial);
-  scene.add(particleSystem);
-  camera.position.z = 500;
-
-  function animate() {
-    requestAnimationFrame(animate);
-    particleSystem.rotation.x += 0.0005;
-    particleSystem.rotation.y += 0.001;
-    renderer.render(scene, camera);
-  }
-  animate();
-
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
 });
 </script>
 </head>
 
-<body class="text-white min-h-screen flex flex-col items-center justify-center p-6">
-
-<canvas id="bgCanvas"></canvas>
+<body class="bg-gradient-to-br from-blue-900 to-blue-500 text-white min-h-screen flex flex-col items-center justify-center p-6">
 
 <!-- Login Page -->
-<div id="loginPage" class="flex flex-col space-y-4 w-full max-w-xs z-10">
+<div id="loginPage" class="flex flex-col space-y-4 w-full max-w-xs">
   <h1 class="text-2xl font-bold text-center">Login to Continue</h1>
   <button id="googleSignInButton" class="bg-red-600 hover:bg-red-700 p-2 rounded">Sign in with Google</button>
 </div>
 
 <!-- Section Page -->
-<div id="sectionPage" class="hidden flex flex-col items-center space-y-4 z-10">
+<div id="sectionPage" class="hidden flex flex-col items-center space-y-4">
   <img id="profilePic" class="w-20 h-20 rounded-full border-4 border-white" alt="Profile Picture">
   <h2 id="profileName" class="text-xl font-semibold"></h2>
   <h1 class="text-2xl font-bold">Welcome to HTML Quiz</h1>
