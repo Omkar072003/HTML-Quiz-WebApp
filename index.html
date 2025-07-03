@@ -1,131 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HTML Quiz Platform with Google Sign-In (Fixed)</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HTML Quiz WebApp with Google Sign-In, Firestore, GSAP Animations</title>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAb3DUoDYJ1kvq23SiDI8PkTCvIt_ooUfM",
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-auth.js";
+import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore.js";
+
+// Your Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyAb3DUoDYJ1kvq23SiDI8PkTCvIt_ooUfM",
             authDomain: "html-quiz-webapp.firebaseapp.com",
             projectId: "html-quiz-webapp",
             storageBucket: "html-quiz-webapp.firebasestorage.app",
             messagingSenderId: "381717252465",
             appId: "1:381717252465:web:409a7de5a0487259ae0ed0",
             measurementId: "G-43P68MYVE0"
-        };
+};
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const provider = new GoogleAuthProvider();
+// Init Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+const db = getFirestore(app);
 
-        window.addEventListener('DOMContentLoaded', () => {
-            const loginPage = document.getElementById('loginPage');
-            const sectionPage = document.getElementById('sectionPage');
-            const basicsPage = document.getElementById('basicsPage');
-            const intermediatePage = document.getElementById('intermediatePage');
-            const advancedPage = document.getElementById('advancedPage');
+window.addEventListener('DOMContentLoaded', () => {
+  const loginPage = document.getElementById('loginPage');
+  const sectionPage = document.getElementById('sectionPage');
+  const profileName = document.getElementById('profileName');
+  const profilePic = document.getElementById('profilePic');
+  const signOutButton = document.getElementById('signOutButton');
 
-            document.getElementById('loginButton').addEventListener('click', () => {
-                const username = document.getElementById('username').value.trim();
-                const password = document.getElementById('password').value.trim();
+  document.getElementById('googleSignInButton').addEventListener('click', async () => {
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      profileName.textContent = user.displayName;
+      profilePic.src = user.photoURL;
 
-                if (username && password) {
-                    loginPage.classList.add('hidden');
-                    sectionPage.classList.remove('hidden');
-                } else {
-                    alert('Please enter username and password');
-                }
-            });
+      loginPage.classList.add('hidden');
+      sectionPage.classList.remove('hidden');
 
-            document.getElementById('googleSignInButton').addEventListener('click', () => {
-                signInWithPopup(auth, provider)
-                    .then(result => {
-                        alert(`Welcome, ${result.user.displayName}`);
-                        loginPage.classList.add('hidden');
-                        sectionPage.classList.remove('hidden');
-                    })
-                    .catch(error => {
-                        console.error(error);
-                        alert('Google Sign-In failed: ' + error.message);
-                    });
-            });
+      // Animate sectionPage with GSAP and Anime.js
+      gsap.from(sectionPage, { opacity: 0, duration: 1, y: -50 });
+      anime({
+        targets: '#profilePic',
+        rotate: '1turn',
+        scale: [0, 1],
+        duration: 1200,
+        easing: 'easeInOutExpo'
+      });
 
-            document.getElementById('basicsPageBtn').addEventListener('click', () => {
-                sectionPage.classList.add('hidden');
-                basicsPage.classList.remove('hidden');
-            });
+      // Store user data in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        name: user.displayName,
+        email: user.email,
+        photoURL: user.photoURL,
+        lastLogin: new Date()
+      });
 
-            document.getElementById('intermediatePageBtn').addEventListener('click', () => {
-                sectionPage.classList.add('hidden');
-                intermediatePage.classList.remove('hidden');
-            });
+    } catch (error) {
+      console.error(error);
+      alert(`Google Sign-In failed: ${error.code} - ${error.message}`);
+    }
+  });
 
-            document.getElementById('advancedPageBtn').addEventListener('click', () => {
-                sectionPage.classList.add('hidden');
-                advancedPage.classList.remove('hidden');
-            });
-
-            document.getElementById('backToSections1').addEventListener('click', () => {
-                basicsPage.classList.add('hidden');
-                sectionPage.classList.remove('hidden');
-            });
-
-            document.getElementById('backToSections2').addEventListener('click', () => {
-                intermediatePage.classList.add('hidden');
-                sectionPage.classList.remove('hidden');
-            });
-
-            document.getElementById('backToSections3').addEventListener('click', () => {
-                advancedPage.classList.add('hidden');
-                sectionPage.classList.remove('hidden');
-            });
-        });
-    </script>
+  signOutButton.addEventListener('click', async () => {
+    await signOut(auth);
+    sectionPage.classList.add('hidden');
+    loginPage.classList.remove('hidden');
+    alert("You have been signed out.");
+  });
+});
+</script>
 </head>
+
 <body class="bg-gradient-to-br from-blue-900 to-blue-500 text-white min-h-screen flex flex-col items-center justify-center p-6">
 
-    <!-- Login Page -->
-    <div id="loginPage" class="flex flex-col space-y-4 w-full max-w-xs">
-        <h1 class="text-2xl font-bold text-center">Login to Continue</h1>
-        <input type="text" id="username" placeholder="Username" class="p-2 rounded text-black">
-        <input type="password" id="password" placeholder="Password" class="p-2 rounded text-black">
-        <button id="loginButton" class="bg-green-600 hover:bg-green-700 p-2 rounded">Login</button>
-        <button id="googleSignInButton" class="bg-red-600 hover:bg-red-700 p-2 rounded">Sign in with Google</button>
-    </div>
+<!-- Login Page -->
+<div id="loginPage" class="flex flex-col space-y-4 w-full max-w-xs">
+  <h1 class="text-2xl font-bold text-center">Login to Continue</h1>
+  <button id="googleSignInButton" class="bg-red-600 hover:bg-red-700 p-2 rounded">Sign in with Google</button>
+</div>
 
-    <!-- Section Selection Page -->
-    <div id="sectionPage" class="hidden flex flex-col items-center space-y-4">
-        <h1 class="text-2xl font-bold">Select Quiz Level</h1>
-        <button id="basicsPageBtn" class="bg-blue-600 p-2 rounded">Basics</button>
-        <button id="intermediatePageBtn" class="bg-blue-600 p-2 rounded">Intermediate</button>
-        <button id="advancedPageBtn" class="bg-blue-600 p-2 rounded">Advanced</button>
-    </div>
-
-    <!-- Basics Page -->
-    <div id="basicsPage" class="hidden flex flex-col items-center space-y-4">
-        <h1 class="text-2xl font-bold">Basics Quiz</h1>
-        <p>Content for basics quiz goes here...</p>
-        <button id="backToSections1" class="bg-gray-600 p-2 rounded">Back</button>
-    </div>
-
-    <!-- Intermediate Page -->
-    <div id="intermediatePage" class="hidden flex flex-col items-center space-y-4">
-        <h1 class="text-2xl font-bold">Intermediate Quiz</h1>
-        <p>Content for intermediate quiz goes here...</p>
-        <button id="backToSections2" class="bg-gray-600 p-2 rounded">Back</button>
-    </div>
-
-    <!-- Advanced Page -->
-    <div id="advancedPage" class="hidden flex flex-col items-center space-y-4">
-        <h1 class="text-2xl font-bold">Advanced Quiz</h1>
-        <p>Content for advanced quiz goes here...</p>
-        <button id="backToSections3" class="bg-gray-600 p-2 rounded">Back</button>
-    </div>
+<!-- Section Page -->
+<div id="sectionPage" class="hidden flex flex-col items-center space-y-4">
+  <img id="profilePic" class="w-20 h-20 rounded-full border-4 border-white" alt="Profile Picture">
+  <h2 id="profileName" class="text-xl font-semibold"></h2>
+  <h1 class="text-2xl font-bold">Welcome to HTML Quiz</h1>
+  <p>Select a quiz level to start.</p>
+  <button class="bg-green-600 p-2 rounded">Basics</button>
+  <button class="bg-yellow-600 p-2 rounded">Intermediate</button>
+  <button class="bg-purple-600 p-2 rounded">Advanced</button>
+  <button id="signOutButton" class="bg-gray-700 hover:bg-gray-800 p-2 rounded">Sign Out</button>
+</div>
 
 </body>
 </html>
